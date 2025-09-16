@@ -1,0 +1,5 @@
+gnss_to_odom:
+  ros__parameters:
+    rmse_rotation_x: 0.00872665
+    rmse_rotation_y: 0.00872665
+    rmse_rotation_z: 0.0174533
