@@ -35,39 +35,58 @@ GnssToOdom::GnssToOdom() : Node("gnss_to_odom")
 
     odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("/gnss/odom", 1);
 
-    configure = false;
+    configure_ = false;
 }
 
 void GnssToOdom::gnss_callback(const sensor_msgs::msg::NavSatFix::SharedPtr msg)
 {
 
-    if (!configure)
+    if (!configure_)
     {
-        configure = true;
+        configure_ = true;
 
         ll_to_utm_.initUTM(msg->latitude, msg->longitude, msg->altitude);
+
+        ll_to_utm_.transform_global(msg->latitude,
+                                    msg->longitude,
+                                    msg->altitude,
+                                    origin_.pose.pose.position.x,
+                                    origin_.pose.pose.position.y,
+                                    origin_.pose.pose.position.z);
+
+        RCLCPP_INFO(this->get_logger(), "UTM coordinates initialized.");
     }
+    else
+    {
 
-    nav_msgs::msg::Odometry odom;
+        nav_msgs::msg::Odometry odom;
 
-    odom.header = msg->header;
+        odom.header = msg->header;
 
-    ll_to_utm_.transform_global(msg->latitude,
-                                msg->longitude,
-                                msg->altitude,
-                                odom.pose.pose.position.x,
-                                odom.pose.pose.position.y, 
-                                odom.pose.pose.position.z);
+        ll_to_utm_.transform_global(msg->latitude,
+                                    msg->longitude,
+                                    msg->altitude,
+                                    odom.pose.pose.position.x,
+                                    odom.pose.pose.position.y,
+                                    odom.pose.pose.position.z);
 
-    std::array<double, 36> cov;
+        odom.pose.pose.position.x -= origin_.pose.pose.position.x;
+        odom.pose.pose.position.y -= origin_.pose.pose.position.y;
 
-    cov.fill(0.0);
+        // RCLCPP_INFO(this->get_logger(), "%lf | %lf",
+        //             odom.pose.pose.position.x,
+        //             odom.pose.pose.position.y);
 
-    cov[0] = msg->position_covariance[0];
-    cov[7] = msg->position_covariance[4];
-    cov[14] = msg->position_covariance[8];
+        std::array<double, 36> cov;
 
-    odom.pose.covariance = cov;
+        cov.fill(0.0);
 
-    odom_pub_->publish(odom);
+        cov[0] = msg->position_covariance[0];
+        cov[7] = msg->position_covariance[4];
+        cov[14] = msg->position_covariance[8];
+
+        odom.pose.covariance = cov;
+
+        odom_pub_->publish(odom);
+    }
 }

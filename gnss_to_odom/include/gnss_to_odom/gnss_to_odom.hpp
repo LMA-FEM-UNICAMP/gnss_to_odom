@@ -41,7 +41,9 @@ public:
 
 private:
 
-    bool configure;
+    bool configure_;
+
+    nav_msgs::msg::Odometry origin_;
 
     clap_b7::LlToUtmTransform ll_to_utm_;
 
